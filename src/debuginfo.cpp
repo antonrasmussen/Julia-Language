@@ -244,8 +244,8 @@ public:
             if (!Addr) continue;
 #endif
 #elif defined(_OS_WINDOWS_)
-            Section->getAddress(SectionAddr);
-            Section->getSize(SectionSize);
+            SectionAddr = Section->getAddress();
+            SectionSize = Section->getSize();
             sym_iter.getName(sName);
 #ifndef _CPU_X86_
             if (sName[0] == '_') sName = sName.substr(1);
@@ -546,11 +546,13 @@ void jl_getDylibFunctionInfo(const char **name, size_t *line, const char **filen
 #endif
 #endif // ifdef _OS_DARWIN_
             if (errorobj) {
-#ifdef LLVM36
+#if defined(LLVM36) && !defined(_OS_WINDOWS_)
                 auto binary = errorobj.get().takeBinary();
                 obj = binary.first.release();
                 binary.second.release();
-#elif LLVM35
+#elif defined(LLVM36) && defined(_OS_WINDOWS_)
+                obj = errorobj->get();
+#elif defined(LLVM35)
                 obj = errorobj.get();
 #else
                 obj = errorobj;
@@ -774,7 +776,12 @@ public:
   }
 
   void notifyObjectLoaded(ExecutionEngine *EE,
-                          const ObjectImage *Obj) override {
+#ifdef LLVM36
+                          const object::ObjectFile &Obj
+#else
+                          const ObjectImage *Obj
+#endif
+                          ) override {
     ClientMM->notifyObjectLoaded(EE, Obj);
   }
 
